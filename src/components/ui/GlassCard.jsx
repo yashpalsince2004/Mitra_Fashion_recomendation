@@ -7,8 +7,8 @@ export function GlassCard({ className, children, hoverable = false, asMotion = f
   return (
     <Component
       className={cn(
-        "bg-[#131b2e] rounded-xl p-6 overflow-hidden", // surface-container-low
-        hoverable && "transition-colors duration-400 hover:bg-[#2d3449]", // surface-container-highest
+        "bg-surface-container-low rounded-xl p-6 overflow-hidden border border-black/5 dark:border-white/5",
+        hoverable && "transition-colors duration-400 hover:bg-surface-container-high",
         className
       )}
       {...props}

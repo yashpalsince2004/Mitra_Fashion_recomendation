@@ -4,8 +4,9 @@ import { Button } from "../components/ui/Button";
 import { AnalysisPanel } from "../components/ui/AnalysisPanel";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
-import { X, Sparkles, ArrowLeft, RefreshCw, Heart, Share2, Tag, Loader2, ExternalLink } from "lucide-react";
+import { X, Sparkles, ArrowLeft, RefreshCw, Heart, Share2, Tag, Loader2, ExternalLink, Download } from "lucide-react";
 import { useWishlist } from "../hooks/useWishlist";
+import { exportToImage } from "../utils/exportImage";
 import { remixOutfit } from "../services/geminiService";
 
 const MOCK_OUTFITS = [
@@ -47,6 +48,7 @@ function OutfitDetailModal({ outfit, imageUrl, isWishlisted, onToggleWishlist, o
   const [shared, setShared] = useState(false);
   const [remixing, setRemixing] = useState(false);
   const [tweakText, setTweakText] = useState("");
+  const [exporting, setExporting] = useState(false);
 
   const QUICK_TWEAKS = ["More casual", "Warmer", "Different colors", "More edgy"];
 
@@ -65,6 +67,16 @@ function OutfitDetailModal({ outfit, imageUrl, isWishlisted, onToggleWishlist, o
     setTweakText("");
   };
 
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      await exportToImage("outfit-modal-card", `Atelier_Look_${outfit.title}`);
+    } catch (err) {
+      console.error("Export failed:", err);
+    }
+    setExporting(false);
+  };
+
   const piecesData = outfit.garments || outfit.desc.split(/[,.]/).filter(Boolean).slice(0, 3);
 
   return (
@@ -81,20 +93,23 @@ function OutfitDetailModal({ outfit, imageUrl, isWishlisted, onToggleWishlist, o
         exit={{ scale: 0.9, opacity: 0, y: 24 }}
         transition={{ type: "spring", stiffness: 280, damping: 28 }}
         onClick={(e) => e.stopPropagation()}
-        className="relative max-w-2xl w-full rounded-3xl overflow-hidden shadow-2xl border border-white/10 max-h-[90vh] overflow-y-auto"
-        style={{ background: "rgba(19, 27, 46, 0.97)" }}
+        id="outfit-modal-card"
+        className="relative max-w-2xl w-full rounded-3xl overflow-hidden shadow-2xl border border-black/5 dark:border-white/10 max-h-[90vh] overflow-y-auto"
+        style={{ background: "var(--surface-low)" }}
       >
-        {remixing && (
-           <div className="absolute inset-0 z-50 bg-[#131b2e]/80 backdrop-blur-sm flex flex-col items-center justify-center">
+        {(remixing || exporting) && (
+           <div className="absolute inset-0 z-50 bg-[#131b2e]/80 backdrop-blur-sm flex flex-col items-center justify-center no-export">
              <Loader2 className="w-8 h-8 text-accent animate-spin mb-4" />
-             <p className="text-white/80 font-medium">Tailoring your look...</p>
+             <p className="text-white/80 font-medium">
+               {remixing ? "Tailoring your look..." : "Generating Style Card..."}
+             </p>
            </div>
         )}
 
         {/* Close */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-black/50 border border-white/10 backdrop-blur flex items-center justify-center hover:bg-white/10 transition-colors"
+          className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-black/50 border border-white/10 backdrop-blur flex items-center justify-center hover:bg-white/10 transition-colors no-export"
         >
           <X className="w-4 h-4 text-white" />
         </button>
@@ -135,15 +150,15 @@ function OutfitDetailModal({ outfit, imageUrl, isWishlisted, onToggleWishlist, o
                       Why it works for you
                     </p>
                   </div>
-                  <p className="text-white/75 text-sm leading-relaxed italic">
+                  <p className="text-main text-sm leading-relaxed italic">
                     &ldquo;{outfit.why_it_works}&rdquo;
                   </p>
                 </div>
               )}
 
               {/* Shoppable Pieces */}
-              <div className="bg-white/3 border border-white/8 rounded-2xl p-4 mb-5">
-                <p className="text-white/35 text-[10px] uppercase tracking-widest font-semibold mb-3">
+              <div className="bg-surface-container-low border border-black/5 dark:border-white/8 rounded-2xl p-4 mb-5">
+                <p className="text-muted text-[10px] uppercase tracking-widest font-semibold mb-3">
                   Shop Key Pieces
                 </p>
                 <div className="flex flex-col gap-2">
@@ -153,20 +168,20 @@ function OutfitDetailModal({ outfit, imageUrl, isWishlisted, onToggleWishlist, o
                       href={`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(piece.trim())}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group flex items-center justify-between text-white/55 text-xs hover:bg-white/5 p-2 rounded-lg transition-colors border border-transparent hover:border-white/10"
+                      className="group flex items-center justify-between text-muted text-xs hover:bg-black/5 dark:hover:bg-white/5 p-2 rounded-lg transition-colors border border-transparent hover:border-black/5 dark:hover:border-white/10"
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 text-main">
                          <span className="w-1 h-1 rounded-full bg-accent/60 shrink-0" />
                          {piece.trim()}
                       </div>
-                      <ExternalLink className="w-3 h-3 text-white/20 group-hover:text-accent transition-colors" />
+                      <ExternalLink className="w-3 h-3 text-muted group-hover:text-accent transition-colors" />
                     </a>
                   ))}
                 </div>
               </div>
 
               {/* Tweak / Remix */}
-              <div className="pt-5 border-t border-white/10">
+              <div className="pt-5 border-t border-white/10 no-export">
                 <p className="text-white/40 text-[10px] uppercase tracking-widest font-semibold mb-3">
                     Remix This Look
                 </p>
@@ -188,7 +203,7 @@ function OutfitDetailModal({ outfit, imageUrl, isWishlisted, onToggleWishlist, o
                         onChange={e => setTweakText(e.target.value)} 
                         onKeyDown={e => e.key === 'Enter' && tweakText.trim() && handleRemix(tweakText)}
                         placeholder="Type a custom tweak..."
-                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white placeholder-white/30 text-xs outline-none focus:border-white/20"
+                        className="flex-1 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl px-3 py-2 text-main placeholder-muted text-xs outline-none focus:border-accent/30"
                     />
                     <Button 
                         size="sm" 
@@ -205,7 +220,7 @@ function OutfitDetailModal({ outfit, imageUrl, isWishlisted, onToggleWishlist, o
             </div>
 
             {/* Actions */}
-            <div className="mt-6 flex gap-3">
+            <div className="mt-6 flex gap-3 no-export">
               <Button
                 onClick={() => onToggleWishlist(outfit)}
                 className={`flex-1 gap-2 text-xs py-3 rounded-xl ${isWishlisted ? "bg-accent/20 border-accent/40 text-accent hover:bg-accent/30" : ""}`}
@@ -220,6 +235,13 @@ function OutfitDetailModal({ outfit, imageUrl, isWishlisted, onToggleWishlist, o
               >
                 <Share2 className="w-[14px] h-[14px]" />
                 {shared ? "Copied!" : "Share"}
+              </button>
+              <button
+                onClick={handleExport}
+                className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-white/10 text-white/50 hover:text-white/80 hover:border-white/20 text-xs transition-all"
+              >
+                <Download className="w-[14px] h-[14px]" />
+                Export
               </button>
             </div>
           </div>
@@ -253,19 +275,19 @@ export function GalleryPage() {
       <div className="mb-10">
         <button
           onClick={() => navigate("/chat")}
-          className="flex items-center gap-2 text-white/35 hover:text-white/65 text-sm mb-6 transition-colors group"
+          className="flex items-center gap-2 text-muted hover:text-main text-sm mb-6 transition-colors group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
           Back to Atelier
         </button>
 
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/10 pb-8">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-black/5 dark:border-white/10 pb-8">
           <div>
-            <span className="text-white/30 text-xs uppercase tracking-widest font-semibold">
+            <span className="text-muted text-xs uppercase tracking-widest font-semibold">
               {occasion ? `For: ${occasion.slice(0, 60)}` : "Your Curation"}
             </span>
-            <h2 className="font-display text-4xl md:text-5xl text-white mt-2">Bespoke Looks</h2>
-            <p className="font-body text-white/45 mt-2">
+            <h2 className="font-display text-4xl md:text-5xl text-main mt-2">Bespoke Looks</h2>
+            <p className="font-body text-muted mt-2">
               {stateOutfits
                 ? `${outfits.length} outfits crafted specifically for your profile.`
                 : "3 curated looks — tap any card to explore details."}
@@ -274,7 +296,7 @@ export function GalleryPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate("/wishlist")}
-              className="flex items-center gap-2 text-white/50 hover:text-white text-sm border border-white/10 hover:border-white/20 px-4 py-2.5 rounded-xl transition-all relative"
+              className="flex items-center gap-2 text-muted hover:text-main text-sm border border-black/10 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20 px-4 py-2.5 rounded-xl transition-all relative"
             >
               <Heart className="w-3.5 h-3.5" />
               Wishlist
@@ -358,11 +380,11 @@ export function GalleryPage() {
                     className={`absolute top-4 right-4 z-10 w-9 h-9 rounded-full backdrop-blur border flex items-center justify-center transition-all duration-200
                       ${wishlisted
                         ? "bg-accent/20 border-accent/40 hover:bg-accent/30"
-                        : "bg-black/40 border-white/10 hover:bg-white/10 opacity-0 group-hover:opacity-100"
+                        : "bg-surface/40 border-black/10 dark:border-white/10 hover:bg-black/10 dark:hover:bg-white/10 opacity-0 group-hover:opacity-100"
                       }`}
                   >
                     <Heart
-                      className={`w-4 h-4 transition-all ${wishlisted ? "text-accent fill-accent scale-110" : "text-white/70"}`}
+                      className={`w-4 h-4 transition-all ${wishlisted ? "text-accent fill-accent scale-110" : "text-muted"}`}
                     />
                   </button>
 
@@ -391,13 +413,13 @@ export function GalleryPage() {
 
                   {/* Card body */}
                   <div className="flex-1 flex flex-col">
-                    <h3 className="font-display text-xl text-white mb-2">{outfit.title}</h3>
-                    <p className="font-body text-white/50 text-sm leading-relaxed flex-1">{outfit.desc}</p>
+                    <h3 className="font-display text-xl text-main mb-2">{outfit.title}</h3>
+                    <p className="font-body text-muted text-sm leading-relaxed flex-1">{outfit.desc}</p>
 
                     {outfit.why_it_works && (
-                      <div className="mt-4 pt-4 border-t border-white/8 flex items-start gap-2">
-                        <Sparkles className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />
-                        <p className="text-white/38 text-xs leading-relaxed italic">
+                      <div className="mt-4 pt-4 border-t border-black/5 dark:border-white/8 flex items-start gap-2">
+                        <Sparkles className="w-3 h-3 text-amber-500 shrink-0 mt-0.5" />
+                        <p className="text-muted text-xs leading-relaxed italic">
                           {outfit.why_it_works}
                         </p>
                       </div>

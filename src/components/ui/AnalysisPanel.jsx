@@ -25,30 +25,30 @@ export function AnalysisPanel({ analysis }) {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: "easeOut" }}
-      className="rounded-2xl border border-white/10 bg-white/4 overflow-hidden"
+      className="rounded-2xl border border-black/5 dark:border-white/10 bg-surface-container-low overflow-hidden shadow-sm"
     >
       {/* Header */}
-      <div className="px-5 py-4 border-b border-white/8 flex items-center gap-2.5">
+      <div className="px-5 py-4 border-b border-black/5 dark:border-white/5 flex items-center gap-2.5">
         <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-        <p className="text-white/80 text-sm font-semibold tracking-wide uppercase">AI Analysis Complete</p>
+        <p className="text-main text-sm font-semibold tracking-wide uppercase">AI Analysis Complete</p>
       </div>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-3 divide-x divide-white/8">
+      <div className="grid grid-cols-3 divide-x divide-black/5 dark:divide-white/5">
         {items.map(({ icon: Icon, label, value }) => (
           <div key={label} className="px-4 py-4 flex flex-col gap-1.5">
             <div className="flex items-center gap-1.5 mb-0.5">
-              <Icon className="w-3 h-3 text-white/30" />
-              <span className="text-white/40 text-[10px] uppercase tracking-widest font-medium">{label}</span>
+              <Icon className="w-3 h-3 text-muted" />
+              <span className="text-muted text-[10px] uppercase tracking-widest font-medium">{label}</span>
             </div>
-            <p className="text-white/90 text-sm font-semibold leading-snug">{value}</p>
+            <p className="text-main text-sm font-semibold leading-snug">{value}</p>
           </div>
         ))}
       </div>
 
       {/* Color palette row */}
-      <div className="px-5 py-4 border-t border-white/8">
-        <p className="text-white/40 text-[10px] uppercase tracking-widest font-medium mb-3">Suggested Palette</p>
+      <div className="px-5 py-4 border-t border-black/5 dark:border-white/5">
+        <p className="text-muted text-[10px] uppercase tracking-widest font-medium mb-3">Suggested Palette</p>
         <div className="flex gap-2.5 items-center">
           {swatches.map((color, i) => (
             <motion.div
@@ -56,12 +56,12 @@ export function AnalysisPanel({ analysis }) {
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: i * 0.08 + 0.2 }}
-              className="w-8 h-8 rounded-full border-2 border-white/10 shadow-lg cursor-pointer hover:scale-110 transition-transform"
+              className="w-8 h-8 rounded-full border-2 border-black/10 dark:border-white/10 shadow-lg cursor-pointer hover:scale-110 transition-transform"
               style={{ backgroundColor: color }}
               title={color}
             />
           ))}
-          <p className="text-white/40 text-xs ml-2 leading-snug">
+          <p className="text-muted text-xs ml-2 leading-snug">
             {analysis.colorNotes}
           </p>
         </div>
@@ -69,8 +69,8 @@ export function AnalysisPanel({ analysis }) {
 
       {/* Insight quote */}
       {analysis.stylistInsight && (
-        <div className="px-5 py-4 border-t border-white/8 bg-accent/5">
-          <p className="text-white/60 text-xs leading-relaxed italic">
+        <div className="px-5 py-4 border-t border-black/5 dark:border-white/5 bg-accent/5">
+          <p className="text-muted text-xs leading-relaxed italic">
             &ldquo;{analysis.stylistInsight}&rdquo;
           </p>
         </div>

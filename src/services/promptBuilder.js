@@ -25,8 +25,12 @@ Each object MUST have these exact keys:
 }
 
 // ─── Vision analysis prompt (image → structured profile) ─────────────────────
-export function buildVisionAnalysisPrompt() {
-  return `You are a professional fashion stylist and image analyst. Analyze this photo of a person carefully.
+export function buildVisionAnalysisPrompt(isMulti = false) {
+  const context = isMulti 
+    ? "Analyze these photos of clothing items and a person carefully. These represent the user's existing wardrobe."
+    : "Analyze this photo of a person carefully.";
+
+  return `You are a professional fashion stylist and image analyst. ${context}
 Return ONLY a raw JSON object (no markdown, no explanation) with these exact keys:
 
 {
@@ -34,6 +38,7 @@ Return ONLY a raw JSON object (no markdown, no explanation) with these exact key
   "skinTone": "string – describe skin tone (e.g. 'Deep Warm', 'Medium Cool', 'Light Neutral')",
   "skinToneCategory": "string – MUST be one of: Warm | Cool | Neutral | Olive | Deep",
   "currentStyle": "string – describe clothing style if visible (e.g. 'Smart Casual', 'Streetwear', 'Formal', 'Bohemian'). If no clothing visible, write 'Undetermined'",
+  "wardrobeVibe": "string - ONLY if multiple images provided, describe the overall aesthetic of the wardrobe (e.g. 'Minimalist Monochrome', 'Vintage Eclectic')",
   "colorNotes": "string – 3-5 word note on ideal accent colors (e.g. 'Earth tones & amber')",
   "stylistInsight": "string – one elegant, personalized sentence about how to dress this person to their advantage"
 }

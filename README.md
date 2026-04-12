@@ -33,6 +33,27 @@ The main curation gallery where the AI's recommendations truly come to life.
 * Users can "heart" outfits from the gallery or the detail modal.
 * Powered by a clean custom hook utilizing `localStorage` to keep saved outfits across sessions.
 
+---
+
+## 🚀 Recent Evolution (Phase 2 & 3)
+
+The platform has recently been upgraded to a high-performance "Editorial Experience":
+
+### ✨ Streaming "Live" Responses
+The stylist now "thinks" and "speaks" in real-time using **Gemini Streaming**. Message bubbles grow dynamically as the AI types, providing a character-by-character conversational experience that feels alive.
+
+### 🧥 "The Wardrobe" (Multi-Image Vision)
+Users can now upload up to **5 images simultaneously**. The AI analyzes the collective aesthetic of the user's wardrobe, providing styling foundations based on a comprehensive visual context rather than a single photo.
+
+### 🥂 Refined Light Mode ("The Champagne Theme")
+A luxury editorial light theme inspired by high-fashion catalogs. Includes a global **Theme Toggle** (Sun/Moon) with a high-contrast palette of creamy whites, deep espresso text, and glassmorphism accents.
+
+### 📸 Shareable "Style Cards" (Export PNG)
+ Curated looks can now be exported as high-resolution images. Utilizing `html2canvas`, the platform renders a clean, UI-free "Style Card" perfect for social sharing or physical shopping reference.
+
+### 🏷️ Shoppable Affiliate Mapping
+Internal garment mapping now links directly to targeted shopping queries, allowing users to move from "looking" to "owning" with one click.
+
 ## 🛠️ Technology Stack
 
 * **Frontend:** React, React Router 

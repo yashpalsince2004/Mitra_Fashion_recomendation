@@ -9,7 +9,7 @@ export function Button({
 }) {
   const variants = {
     primary: "bg-silk-gradient text-white shadow-lg hover:brightness-110 active:brightness-95",
-    secondary: "glass text-white ghost-border hover:bg-white/10",
+    secondary: "glass text-main ghost-border hover:bg-black/5 dark:hover:bg-white/5",
     tertiary: "text-accent border-b border-transparent hover:border-accent rounded-none px-0 py-1"
   };
 

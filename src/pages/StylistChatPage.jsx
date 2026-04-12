@@ -10,7 +10,7 @@ import {
   analyzeUserImage,
   generatePersonalizedOutfits,
   createStylistChatSession,
-  sendChatMessage,
+  sendChatMessageStream,
 } from "../services/geminiService";
 
 const PHASE = {
@@ -41,7 +41,7 @@ export function StylistChatPage() {
     },
   ]);
   const [input, setInput] = useState("");
-  const [uploadedImage, setUploadedImage] = useState(null);
+  const [uploadedImages, setUploadedImages] = useState([]);
   const [analysis, setAnalysis] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [chatTurns, setChatTurns] = useState(0);
@@ -51,19 +51,24 @@ export function StylistChatPage() {
   }, [messages]);
 
   // ── Image upload → vision analysis ─────────────────────────────────────────
-  const handleImageSelect = async (imageData) => {
-    setUploadedImage(imageData);
+  const handleImageSelect = async (imagesData) => {
+    // imagesData is now an array from ImageUploader
+    setUploadedImages(imagesData);
     setPhase(PHASE.ANALYZING);
 
     setMessages((prev) => [
       ...prev,
-      { role: "user", imagePreview: imageData.previewUrl, text: "" },
+      { 
+        role: "user", 
+        imagePreviews: imagesData.map(img => img.previewUrl), 
+        text: imagesData.length > 1 ? `Uploaded ${imagesData.length} wardrobe pieces` : "" 
+      },
       { role: "ai", text: "Scanning your features — just a moment…", loading: true },
     ]);
     setIsLoading(true);
 
     try {
-      const result = await analyzeUserImage(imageData.base64Data, imageData.mimeType);
+      const result = await analyzeUserImage(imagesData);
       setAnalysis(result);
 
       // Initialise Gemini chat session with profile context
@@ -130,11 +135,20 @@ export function StylistChatPage() {
     setMessages((prev) => [...prev, { role: "user", text }]);
     setIsLoading(true);
 
-    const aiReply = await sendChatMessage(chatSessionRef.current, text);
+    // Prepare empty AI message bubble for streaming
+    setMessages((prev) => [...prev, { role: "ai", text: "" }]);
+
+    const aiReply = await sendChatMessageStream(chatSessionRef.current, text, (chunkText) => {
+      setMessages((prev) => {
+        const newMsgs = [...prev];
+        newMsgs[newMsgs.length - 1].text = chunkText;
+        return newMsgs;
+      });
+    });
+
     conversationLogRef.current += `\nStylist: ${aiReply}`;
 
     setIsLoading(false);
-    setMessages((prev) => [...prev, { role: "ai", text: aiReply }]);
     setChatTurns((n) => n + 1);
   };
 
@@ -160,7 +174,7 @@ export function StylistChatPage() {
     navigate("/gallery", {
       state: {
         outfits,
-        userImage: uploadedImage?.previewUrl,
+        userImages: uploadedImages.map(img => img.previewUrl),
         analysis,
         quizProfile,
         occasion: conversationLogRef.current.slice(0, 80),
@@ -191,14 +205,14 @@ export function StylistChatPage() {
                     <div className="w-8 h-8 shrink-0 rounded-full bg-gradient-to-br from-accent/70 to-accent/20 border border-accent/20 flex items-center justify-center">
                       <Wand2 className="w-3.5 h-3.5 text-white" />
                     </div>
-                    <div className="glass rounded-2xl rounded-tl-sm border border-white/8 px-5 py-4">
+                    <div className="glass rounded-2xl rounded-tl-sm border border-black/5 dark:border-white/5 px-5 py-4">
                       {msg.loading ? (
                         <div className="flex items-center gap-2.5">
                           <Loader2 className="w-4 h-4 text-accent animate-spin" />
-                          <p className="text-white/55 text-sm font-body">{msg.text}</p>
+                          <p className="text-muted text-sm font-body">{msg.text}</p>
                         </div>
                       ) : (
-                        <p className="text-white/90 font-body text-sm leading-relaxed">{msg.text}</p>
+                        <p className="text-main font-body text-sm leading-relaxed">{msg.text}</p>
                       )}
                     </div>
                   </div>
@@ -229,8 +243,16 @@ export function StylistChatPage() {
                 </div>
               ) : (
                 <div className="max-w-[80%] flex flex-col items-end gap-2">
-                  {msg.imagePreview ? (
-                    <div className="rounded-2xl overflow-hidden border border-white/10 max-w-[180px]">
+                  {msg.imagePreviews ? (
+                    <div className="flex flex-wrap justify-end gap-2 max-w-[300px]">
+                      {msg.imagePreviews.map((src, idx) => (
+                        <div key={idx} className="rounded-xl overflow-hidden border border-white/10 w-20 h-20 sm:w-24 sm:h-24">
+                           <img src={src} alt="Uploaded" className="w-full h-full object-cover" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : msg.imagePreview ? (
+                    <div className="rounded-2xl overflow-hidden border border-black/10 dark:border-white/10 max-w-[180px]">
                       <img
                         src={msg.imagePreview}
                         alt="Uploaded"
@@ -238,8 +260,8 @@ export function StylistChatPage() {
                       />
                     </div>
                   ) : (
-                    <div className="bg-[#2d3449] rounded-2xl rounded-br-sm px-5 py-4">
-                      <p className="text-white/90 font-body text-sm leading-relaxed">{msg.text}</p>
+                    <div className="bg-surface-container-high rounded-2xl rounded-br-sm px-5 py-4 border border-black/5 dark:border-white/5 shadow-sm">
+                      <p className="text-main font-body text-sm leading-relaxed">{msg.text}</p>
                     </div>
                   )}
                 </div>

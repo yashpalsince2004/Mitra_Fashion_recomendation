@@ -1,13 +1,12 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #0F172A;
-  --color-secondary: #1E293B;
-  --color-accent: #E11D48;
-  --color-neutral: #F8FAFC;
-  --color-surface: #0b1326;
-  --color-surface-container-low: #131b2e;
-  --color-surface-container-high: #2d3449;
+  --color-primary: var(--primary);
+  --color-accent: var(--accent);
+  --color-neutral: var(--neutral);
+  --color-surface: var(--surface);
+  --color-surface-container-low: var(--surface-low);
+  --color-surface-container-high: var(--surface-high);
 
   --font-display: 'Manrope', 'Poppins', sans-serif;
   --font-body: 'Inter', sans-serif;
@@ -17,13 +16,44 @@
   --shadow-whisper: 0px 24px 48px rgba(0, 0, 0, 0.4);
 }
 
+:root {
+  /* Default Dark Mode (Noir) */
+  --primary: #0F172A;
+  --accent: #E11D48;
+  --neutral: #F8FAFC;
+  --surface: #0b1326;
+  --surface-low: #131b2e;
+  --surface-high: #2d3449;
+  --glass: rgba(255, 255, 255, 0.08);
+  --glass-drawer: rgba(255, 255, 255, 0.05);
+  --ghost-border: rgba(255, 255, 255, 0.15);
+  --text-muted: rgba(255, 255, 255, 0.4);
+  --text-main: rgba(255, 255, 255, 0.9);
+}
+
+:root.light {
+  /* Refined Champagne Theme */
+  --primary: #5c4b40;
+  --accent: #8b6e4e;
+  --neutral: #2c2420;
+  --surface: #fdfaf7;
+  --surface-low: #f5f1eb;
+  --surface-high: #ede7de;
+  --glass: rgba(139, 110, 78, 0.05);
+  --glass-drawer: rgba(139, 110, 78, 0.03);
+  --ghost-border: rgba(139, 110, 78, 0.15);
+  --text-muted: rgba(44, 36, 32, 0.5);
+  --text-main: rgba(44, 36, 32, 0.9);
+}
+
 @layer base {
   body {
-    background-color: var(--color-surface);
-    color: var(--color-neutral);
+    background-color: var(--surface);
+    color: var(--text-main);
     font-family: var(--font-body);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.5s ease, color 0.5s ease;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -34,45 +64,30 @@
 
 @layer utilities {
   .glass {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--glass);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
   }
 
   .glass-drawer {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--glass-drawer);
     backdrop-filter: blur(40px);
     -webkit-backdrop-filter: blur(40px);
   }
 
   .text-gradient {
-    background: linear-gradient(135deg, #bec6e0 0%, #0f172a 100%);
+    /* Dynamic gradient based on theme */
+    background: linear-gradient(135deg, var(--accent) 0%, var(--primary) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
   }
 
   .bg-silk-gradient {
-    background: linear-gradient(135deg, #bec6e0 0%, #0f172a 100%);
+    background: linear-gradient(135deg, var(--accent) 0%, var(--primary) 100%);
   }
 
   .ghost-border {
-    border: 1px solid rgba(255, 255, 255, 0.15);
-  }
-
-  .bg-white\/3 {
-    background-color: rgba(255, 255, 255, 0.03);
-  }
-
-  .bg-white\/4 {
-    background-color: rgba(255, 255, 255, 0.04);
-  }
-
-  .bg-white\/5 {
-    background-color: rgba(255, 255, 255, 0.05);
-  }
-
-  .border-white\/8 {
-    border-color: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--ghost-border);
   }
 
   @keyframes upload-pulse {

@@ -94,7 +94,7 @@ export function QuizPage() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center min-h-screen px-4 pb-16">
       {/* Background orb */}
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-[#1a233a] rounded-full blur-[140px] pointer-events-none opacity-60" />
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-accent/5 rounded-full blur-[140px] pointer-events-none opacity-60" />
       <div className="fixed -top-40 -right-40 w-[500px] h-[500px] bg-accent/8 rounded-full blur-[120px] pointer-events-none" />
 
       <div className="w-full max-w-2xl z-10">
@@ -103,18 +103,18 @@ export function QuizPage() {
           <div className="flex items-center justify-between mb-3">
             <button
               onClick={handleBack}
-              className="flex items-center gap-1.5 text-white/35 hover:text-white/70 text-sm transition-colors"
+              className="flex items-center gap-1.5 text-muted hover:text-main text-sm transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               {currentStep === 0 ? "Home" : "Back"}
             </button>
-            <span className="text-white/30 text-xs tracking-widest uppercase font-medium">
+            <span className="text-muted text-xs tracking-widest uppercase font-medium">
               {currentStep + 1} / {totalSteps}
             </span>
           </div>
-          <div className="h-0.5 bg-white/8 rounded-full overflow-hidden">
+          <div className="h-0.5 bg-black/5 dark:bg-white/8 rounded-full overflow-hidden">
             <motion.div
-              className="h-full bg-gradient-to-r from-accent/60 to-accent rounded-full"
+              className="h-full bg-silk-gradient rounded-full"
               initial={{ width: 0 }}
               animate={{ width: `${progress + 25}%` }}
               transition={{ duration: 0.5, ease: "easeOut" }}
@@ -133,13 +133,13 @@ export function QuizPage() {
             transition={{ duration: 0.3, ease: "easeOut" }}
           >
             <div className="mb-8">
-              <p className="text-white/40 text-xs uppercase tracking-widest font-semibold mb-3">
+              <p className="text-muted text-xs uppercase tracking-widest font-semibold mb-3">
                 Style Profile · Step {currentStep + 1}
               </p>
-              <h2 className="font-display text-3xl md:text-4xl text-white mb-2">
+              <h2 className="font-display text-3xl md:text-4xl text-main mb-2">
                 {step.question}
               </h2>
-              <p className="font-body text-white/45 text-base">{step.subtitle}</p>
+              <p className="font-body text-muted text-base">{step.subtitle}</p>
             </div>
 
             {/* Options grid */}
@@ -156,7 +156,7 @@ export function QuizPage() {
                       relative text-left p-5 rounded-2xl border transition-all duration-200 group
                       ${isSelected
                         ? "bg-accent/15 border-accent/50 shadow-lg shadow-accent/10"
-                        : "bg-white/3 border-white/10 hover:bg-white/6 hover:border-white/25"
+                        : "bg-surface-container-low border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-surface-container-high hover:border-accent/40"
                       }
                     `}
                   >
@@ -170,10 +170,10 @@ export function QuizPage() {
                       </motion.div>
                     )}
                     <span className="text-2xl mb-3 block">{opt.emoji}</span>
-                    <p className={`font-semibold text-sm mb-1 ${isSelected ? "text-white" : "text-white/80"}`}>
+                    <p className={`font-semibold text-sm mb-1 ${isSelected ? "text-accent" : "text-main"}`}>
                       {opt.value}
                     </p>
-                    <p className="text-white/35 text-xs leading-snug">{opt.desc}</p>
+                    <p className="text-muted text-xs leading-snug">{opt.desc}</p>
                   </motion.button>
                 );
               })}
@@ -183,7 +183,7 @@ export function QuizPage() {
             <div className="flex justify-center mt-8">
               <button
                 onClick={() => navigate("/chat")}
-                className="text-white/25 hover:text-white/45 text-xs tracking-widest uppercase transition-colors flex items-center gap-1.5"
+                className="text-muted hover:text-main text-[10px] tracking-widest uppercase transition-colors flex items-center gap-1.5 font-bold"
               >
                 Skip quiz <ArrowRight className="w-3 h-3" />
               </button>

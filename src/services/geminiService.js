@@ -10,18 +10,27 @@ import {
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
 const genAI = new GoogleGenerativeAI(API_KEY);
 
-// ─── Analyze an uploaded image using Gemini Vision ────────────────────────────
-export async function analyzeUserImage(base64Data, mimeType) {
-  if (!API_KEY) return getMockAnalysis();
+// ─── Analyze an uploaded image(s) using Gemini Vision ───────────────────────
+export async function analyzeUserImage(images) {
+  // Support both old single parameter and new array parameter for safety
+  const imagesArray = Array.isArray(images) ? images : [{ base64Data: arguments[0], mimeType: arguments[1] }];
+  
+  if (!API_KEY) return getMockAnalysis(imagesArray.length > 1);
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const imagePart = { inlineData: { data: base64Data, mimeType } };
-    const result = await model.generateContent([buildVisionAnalysisPrompt(), imagePart]);
+    const imageParts = imagesArray.map(img => ({
+      inlineData: { data: img.base64Data, mimeType: img.mimeType }
+    }));
+    
+    const result = await model.generateContent([
+      buildVisionAnalysisPrompt(imagesArray.length > 1), 
+      ...imageParts
+    ]);
     const cleaned = result.response.text().replace(/```json/g, "").replace(/```/g, "").trim();
     return JSON.parse(cleaned);
   } catch (err) {
     console.error("Gemini Vision Error:", err);
-    return getMockAnalysis();
+    return getMockAnalysis(imagesArray.length > 1);
   }
 }
 
@@ -52,13 +61,30 @@ export function createStylistChatSession(analysis, quizProfile) {
 }
 
 // ─── Send a message to an existing chat session ───────────────────────────────
-export async function sendChatMessage(chatSession, userMessage) {
-  if (!chatSession) return getMockChatReply(userMessage);
+export async function sendChatMessageStream(chatSession, userMessage, onChunk) {
+  if (!chatSession) {
+    const mockReply = await getMockChatReply(userMessage);
+    const words = mockReply.split(" ");
+    let currentText = "";
+    for (const word of words) {
+       currentText += word + " ";
+       onChunk(currentText);
+       await new Promise(r => setTimeout(r, 60));
+    }
+    return currentText.trim();
+  }
+  
   try {
-    const result = await chatSession.sendMessage(userMessage);
-    return result.response.text();
+    const result = await chatSession.sendMessageStream(userMessage);
+    let fullText = "";
+    for await (const chunk of result.stream) {
+      const chunkText = chunk.text();
+      fullText += chunkText;
+      onChunk(fullText);
+    }
+    return fullText;
   } catch (err) {
-    console.error("Gemini Chat Error:", err);
+    console.error("Gemini Chat Stream Error:", err);
     return "My apologies — I had a moment of distraction. Could you describe your occasion again?";
   }
 }
@@ -95,7 +121,7 @@ export async function generateOutfitRecommendations(occasion, stylePreferences) 
 }
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
-function getMockAnalysis() {
+function getMockAnalysis(isMulti = false) {
   return new Promise((resolve) =>
     setTimeout(
       () =>
@@ -104,6 +130,7 @@ function getMockAnalysis() {
           skinTone: "Medium Warm",
           skinToneCategory: "Warm",
           currentStyle: "Smart Casual",
+          wardrobeVibe: isMulti ? "Vintage Eclectic with neutral foundations" : undefined,
           colorNotes: "Earth tones & amber",
           stylistInsight:
             "Your warm undertones pair beautifully with camel, terracotta, and deep olive. Structure will complement your silhouette.",
