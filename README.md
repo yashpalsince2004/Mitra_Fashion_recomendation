@@ -1,40 +1,87 @@
-# 💎 AI Fashion Recommendation System (The Digital Atelier)
+# AI Fashion Stylist ✦
 
-An elite, modern fashion styling application powered by artificial intelligence.
+A premium, interactive AI-powered fashion recommendation platform designed to act as your personal "Digital Atelier." This project leverages the Google Gemini API (Vision & Text) to analyze your physical profile, understand your styling preferences, and curate bespoke "shoppable" outfit recommendations.
 
-## Features
-- **Conversational AI Styling:** Experience a guided, step-by-step fashion consultation mimicking a professional tailor.
-- **Computer Vision Extraction (Pending Real-time Integration):** Designed to analyze skin tone and body structure via Gemini Vision API.
-- **Event-Based Intelligence:** Adapts to formality levels and specific seasonal or cultural events.
-- **Premium Structural Design:** Built on the "Digital Atelier" design philosophy—minimalist glassmorphism, tonal depth, and Vogue-level typography over functional scaffolding.
+![AI Fashion Stylist Overview](/src/assets/preview-placeholder.png) *(Preview)*
 
-## Tech Stack
-- Frontend: **React 19 (Vite)**
-- Styling: **Tailwind CSS v4** + Custom Glassmorphism Theme
-- Animations: **Framer Motion**
-- Brain: **Google Gemini API** (`gemini-1.5-flash` for high-speed stylistic JSON generation)
+## 🌟 Key Features
 
-## Getting Started Locally
+### 1. Style Profile & Quiz Engine
+A beautiful 4-step glassmorphism quiz that captures the user's styling intent before they even hit the chat.
+* **Occasion Setup:** (Everyday, Evening, Formal, Avant-Garde).
+* **Vibe Check:** (Minimalist, Streetwear, Elegant).
+* **Color Palette:** (Neutrals, Earth Tones, Bold, Monochromes).
+* **Budget Tier:** (Accessible, Mid-Tier, Luxury).
 
-1. Create a `.env` file in the root directory:
-   ```env
-   VITE_GEMINI_API_KEY=your_google_gemini_api_key_here
+### 2. Gemini Vision Analysis (`ImageUploader` + `AnalysisPanel`)
+Drag and drop a photo to let the AI analyze your core profile to generate a tailored style foundation.
+* **Extraction:** Detects Body Type, Skin Tone undertones, and current style vibes.
+* **Insight:** Provides a personalized "Stylist Insight" determining what silhouettes and colors complement the user best.
+
+### 3. Persistent AI Chat Session (`StylistChatPage`)
+A real-time, stateful conversation powered by `gemini-1.5-flash`.
+* **Context-Aware:** The AI enters the chat pre-loaded with the user's Vision Analysis and Quiz Profile.
+* **Elegant Experience:** Styled like a luxury concierge, the AI asks targeted questions to refine the desired look before generating the final outfit board.
+
+### 4. Interactive & Shoppable Gallery (`GalleryPage`)
+The main curation gallery where the AI's recommendations truly come to life.
+* **Bespoke Generation:** The AI creates 3 completely custom outfits formatted precisely as a JSON object containing tags, evocative descriptions, and deep "Why it works for you" personalized reasoning.
+* **Shoppable Links:** The AI intelligently separates the outfit into a `garments` array. Each garment automatically links to an active Google Shopping search (e.g., *Navy double-breasted jacket*), bridging the gap between digital curation and physical purchasing.
+* **"Remix This Look":** Don't love a specific part of an outfit? Users can click "Remix", tell the AI how to tweak it (e.g., "Make it more casual"), and the AI will surgically drop a new, updated outfit card right into the active gallery.
+
+### 5. Persistent Wishlist (`useWishlist`)
+* Users can "heart" outfits from the gallery or the detail modal.
+* Powered by a clean custom hook utilizing `localStorage` to keep saved outfits across sessions.
+
+## 🛠️ Technology Stack
+
+* **Frontend:** React, React Router 
+* **Styling:** Vanilla CSS & Tailwind CSS (Glassmorphism, Gradients, Micro-animations)
+* **Animations:** Framer Motion (page transitions, modal springs, staggered card reveals)
+* **Icons:** Lucide React
+* **AI Engine:** Google Gemini API (`@google/generative-ai` SDK)
+* **Build Tool:** Vite
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+You need a Google Gemini API Key. Get one from [Google AI Studio](https://aistudio.google.com/app/apikey).
+
+### Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/yashpalsince2004/Ai_Fashion_recomendation.git
+   cd Ai_Fashion_recomendation
    ```
-2. Install dependencies:
+
+2. **Install dependencies:**
    ```bash
    npm install
    ```
-3. Run the development server:
+
+3. **Set up environment variables:**
+   Create a `.env` file in the root directory based on `.env.example`:
+   ```bash
+   VITE_GEMINI_API_KEY="your_api_key_here"
+   ```
+
+4. **Start the development server:**
    ```bash
    npm run dev
    ```
 
-## Deploying to GitHub Pages
-Since the application uses local state management and browser-based Vite handling, it is completely statically hostable at virtually zero cost.
+## 🏗️ Architecture & Flow
 
-1. Ensure the `base` in `vite.config.js` matches your GitHub repository name if not hosted on a root domain (e.g. `base: "/my-repo-name/"`).
-2. Run `npm run build`.
-3. Push the `dist` folder to your `gh-pages` branch, or use GitHub Actions to automate this process.
+1. `LandingPage.jsx`: The grand entrance. Routes users primarily to the style quiz.
+2. `QuizPage.jsx`: Collects user preferences and pushes them to React Router state.
+3. `StylistChatPage.jsx`: Handles the Image Vision upload and the persistent text-conversation session. Consolidates all data.
+4. `GalleryPage.jsx`: The interactive showroom. Holds the React state for the custom outfits array. Houses the `OutfitDetailModal`.
+5. `promptBuilder.js`: The central "brain" of the app. Houses the meticulously crafted prompts that force Gemini to output consistent, structured JSON objects.
+
+## 🔒 Security Note
+This app utilizes client-side API calls to Gemini for the sake of an architectural prototype. For production deployment, the `genAI` API requests should be securely proxied through a lightweight backend (like Node.js/Express, or edge functions via Vercel/Supabase) to protect the `VITE_GEMINI_API_KEY`.
 
 ---
-*Created as part of the Vibe Project.*
+*Built as a state-of-the-art exploration into agentic styling platforms.*

@@ -1,74 +1,325 @@
-import { useState } from "react";
-import { GlassCard } from "../components/ui/GlassCard";
+import { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Send, Wand2, Loader2, Sparkles } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
-import { motion } from "framer-motion";
-import { Send, Upload } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { ImageUploader } from "../components/ui/ImageUploader";
+import { AnalysisPanel } from "../components/ui/AnalysisPanel";
+import {
+  analyzeUserImage,
+  generatePersonalizedOutfits,
+  createStylistChatSession,
+  sendChatMessage,
+} from "../services/geminiService";
+
+const PHASE = {
+  GREETING: "greeting",
+  ANALYZING: "analyzing",
+  ANALYZED: "analyzed",
+  CHATTING: "chatting",
+  GENERATING: "generating",
+};
 
 export function StylistChatPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const quizProfile = location.state?.quizProfile || null;
+
+  const bottomRef = useRef(null);
+  const chatSessionRef = useRef(null);
+  const conversationLogRef = useRef(""); // Accumulate full context for outfit gen
+
+  const [phase, setPhase] = useState(PHASE.GREETING);
   const [messages, setMessages] = useState([
-    { role: 'ai', text: 'Welcome to the atelier. I am your personal stylist. What occasion are we dressing for today?' }
+    {
+      role: "ai",
+      text: quizProfile
+        ? `Welcome back. I've reviewed your style profile — ${quizProfile.styleVibe} with a focus on ${quizProfile.occasion}. Upload a photo and we'll take this to the next level.`
+        : "Welcome to your private atelier. I'm your personal AI stylist. Upload a photo of yourself — I'll analyse your features and craft bespoke looks around you.",
+      showUploader: true,
+    },
   ]);
   const [input, setInput] = useState("");
+  const [uploadedImage, setUploadedImage] = useState(null);
+  const [analysis, setAnalysis] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [chatTurns, setChatTurns] = useState(0);
 
-  const handleSend = () => {
-    if(!input.trim()) return;
-    setMessages(prev => [...prev, { role: 'user', text: input }]);
-    setInput("");
-    
-    // Mock progression to next phase
-    setTimeout(() => {
-      setMessages(prev => [...prev, { 
-        role: 'ai', 
-        text: 'Excellent. Please select or upload a full-body photo so I can account for fit and structure.' 
-      }]);
-    }, 1000);
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // ── Image upload → vision analysis ─────────────────────────────────────────
+  const handleImageSelect = async (imageData) => {
+    setUploadedImage(imageData);
+    setPhase(PHASE.ANALYZING);
+
+    setMessages((prev) => [
+      ...prev,
+      { role: "user", imagePreview: imageData.previewUrl, text: "" },
+      { role: "ai", text: "Scanning your features — just a moment…", loading: true },
+    ]);
+    setIsLoading(true);
+
+    try {
+      const result = await analyzeUserImage(imageData.base64Data, imageData.mimeType);
+      setAnalysis(result);
+
+      // Initialise Gemini chat session with profile context
+      chatSessionRef.current = createStylistChatSession(result, quizProfile);
+
+      setPhase(PHASE.CHATTING);
+      setMessages((prev) => {
+        const clean = prev.filter((m) => !m.loading);
+        return [
+          ...clean,
+          {
+            role: "ai",
+            text: `Analysis complete. ${result.stylistInsight}`,
+            analysis: result,
+          },
+          {
+            role: "ai",
+            text: "Now — what are we dressing you for? Tell me about the occasion, the mood, or the impression you want to make.",
+          },
+        ];
+      });
+    } catch {
+      setPhase(PHASE.CHATTING);
+      chatSessionRef.current = createStylistChatSession(null, quizProfile);
+      setMessages((prev) => {
+        const clean = prev.filter((m) => !m.loading);
+        return [
+          ...clean,
+          {
+            role: "ai",
+            text: "I couldn't fully read the photo, but that's fine — tell me what occasion we're dressing for and I'll craft something exceptional.",
+          },
+        ];
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
+  const handleImageClear = () => {
+    setUploadedImage(null);
+    setAnalysis(null);
+    chatSessionRef.current = null;
+    conversationLogRef.current = "";
+    setChatTurns(0);
+    setPhase(PHASE.GREETING);
+    setMessages([
+      {
+        role: "ai",
+        text: "No problem — let's start fresh. Upload your photo whenever you're ready.",
+        showUploader: true,
+      },
+    ]);
+  };
+
+  // ── User sends a chat message ───────────────────────────────────────────────
+  const handleSend = async () => {
+    if (!input.trim() || isLoading || phase === PHASE.GENERATING) return;
+    const text = input.trim();
+    setInput("");
+
+    conversationLogRef.current += `\nClient: ${text}`;
+
+    setMessages((prev) => [...prev, { role: "user", text }]);
+    setIsLoading(true);
+
+    const aiReply = await sendChatMessage(chatSessionRef.current, text);
+    conversationLogRef.current += `\nStylist: ${aiReply}`;
+
+    setIsLoading(false);
+    setMessages((prev) => [...prev, { role: "ai", text: aiReply }]);
+    setChatTurns((n) => n + 1);
+  };
+
+  // ── Generate outfits → navigate to gallery ─────────────────────────────────
+  const handleGenerate = async () => {
+    if (isLoading) return;
+    setPhase(PHASE.GENERATING);
+    setMessages((prev) => [
+      ...prev,
+      { role: "ai", text: "Curating your bespoke looks now…", loading: true },
+    ]);
+    setIsLoading(true);
+
+    const outfits = await generatePersonalizedOutfits(
+      "",
+      conversationLogRef.current,
+      analysis,
+      quizProfile
+    );
+
+    setIsLoading(false);
+
+    navigate("/gallery", {
+      state: {
+        outfits,
+        userImage: uploadedImage?.previewUrl,
+        analysis,
+        quizProfile,
+        occasion: conversationLogRef.current.slice(0, 80),
+      },
+    });
+  };
+
+  const showInput = phase === PHASE.CHATTING || phase === PHASE.GENERATING;
+  const showGenerateBtn = chatTurns >= 1 && phase === PHASE.CHATTING && !isLoading;
+
   return (
-    <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full px-4 py-8">
-      <div className="flex-1 overflow-y-auto flex flex-col gap-6 pb-24">
-        {messages.map((msg, i) => (
-          <motion.div 
-            key={i}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
-            <div className={`max-w-[80%] md:max-w-[70%] p-5 rounded-2xl ${msg.role === 'user' ? 'bg-[#2d3449] rounded-br-sm' : 'glass rounded-bl-sm border border-white/5'}`}>
-              <p className="text-white/90 font-body leading-relaxed">{msg.text}</p>
-            </div>
-          </motion.div>
-        ))}
+    <div className="flex-1 flex flex-col max-w-3xl mx-auto w-full px-4 py-6">
+      {/* Message thread */}
+      <div className="flex-1 overflow-y-auto flex flex-col gap-5 pb-52">
+        <AnimatePresence initial={false}>
+          {messages.map((msg, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.38, ease: "easeOut" }}
+              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+            >
+              {msg.role === "ai" ? (
+                <div className="max-w-[88%] flex flex-col gap-3">
+                  <div className="flex items-start gap-3">
+                    {/* AI avatar */}
+                    <div className="w-8 h-8 shrink-0 rounded-full bg-gradient-to-br from-accent/70 to-accent/20 border border-accent/20 flex items-center justify-center">
+                      <Wand2 className="w-3.5 h-3.5 text-white" />
+                    </div>
+                    <div className="glass rounded-2xl rounded-tl-sm border border-white/8 px-5 py-4">
+                      {msg.loading ? (
+                        <div className="flex items-center gap-2.5">
+                          <Loader2 className="w-4 h-4 text-accent animate-spin" />
+                          <p className="text-white/55 text-sm font-body">{msg.text}</p>
+                        </div>
+                      ) : (
+                        <p className="text-white/90 font-body text-sm leading-relaxed">{msg.text}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Upload zone */}
+                  {msg.showUploader && phase === PHASE.GREETING && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.25 }}
+                      className="ml-11"
+                    >
+                      <ImageUploader onImageSelect={handleImageSelect} onClear={handleImageClear} />
+                    </motion.div>
+                  )}
+
+                  {/* Analysis panel */}
+                  {msg.analysis && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 }}
+                      className="ml-11"
+                    >
+                      <AnalysisPanel analysis={msg.analysis} />
+                    </motion.div>
+                  )}
+                </div>
+              ) : (
+                <div className="max-w-[80%] flex flex-col items-end gap-2">
+                  {msg.imagePreview ? (
+                    <div className="rounded-2xl overflow-hidden border border-white/10 max-w-[180px]">
+                      <img
+                        src={msg.imagePreview}
+                        alt="Uploaded"
+                        className="w-full h-40 object-cover object-top"
+                      />
+                    </div>
+                  ) : (
+                    <div className="bg-[#2d3449] rounded-2xl rounded-br-sm px-5 py-4">
+                      <p className="text-white/90 font-body text-sm leading-relaxed">{msg.text}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+        <div ref={bottomRef} />
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 p-6 glass-drawer border-t border-white/10 z-20">
-        <div className="max-w-4xl mx-auto relative flex items-center gap-4">
-           {/* Upload action mock */}
-          <button className="w-12 h-12 shrink-0 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors">
-            <Upload className="w-5 h-5 text-white/70" />
-          </button>
-          
-          <div className="flex-1 relative">
-            <Input 
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              placeholder="Describe your style, event, or upload an image..."
-              className="pr-14"
-            />
-            <button 
-              onClick={handleSend}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-accent hover:text-accent/80 transition-colors"
+      {/* Input bar */}
+      <div className="fixed bottom-0 left-0 right-0 p-5 glass-drawer border-t border-white/8 z-20">
+        <div className="max-w-3xl mx-auto flex flex-col gap-3">
+
+          {/* Generate CTA */}
+          <AnimatePresence>
+            {showGenerateBtn && (
+              <motion.div
+                initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                transition={{ duration: 0.3 }}
+              >
+                <Button
+                  onClick={handleGenerate}
+                  className="w-full gap-2 py-3.5 text-base"
+                  disabled={isLoading}
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Generate My Looks
+                </Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Text input */}
+          {showInput ? (
+            <div className="relative flex items-center gap-3">
+              <div className="flex-1 relative">
+                <Input
+                  variant="box"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                  placeholder={
+                    phase === PHASE.GENERATING
+                      ? "Curating your looks…"
+                      : "Describe your occasion or answer the stylist…"
+                  }
+                  disabled={isLoading || phase === PHASE.GENERATING}
+                  className="pr-12"
+                />
+                <button
+                  onClick={handleSend}
+                  disabled={!input.trim() || isLoading || phase === PHASE.GENERATING}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full text-accent hover:text-white hover:bg-accent/20 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-center text-white/20 text-xs tracking-widest uppercase">
+              {phase === PHASE.ANALYZING ? "Analysing your photo…" : "Upload a photo to begin"}
+            </p>
+          )}
+
+          {/* Dev skip */}
+          <div className="flex justify-end">
+            <button
+              onClick={() => navigate("/gallery")}
+              className="text-white/15 hover:text-white/35 text-[10px] tracking-wider transition-colors"
             >
-              <Send className="w-5 h-5" />
+              Skip → Dev
             </button>
           </div>
-        </div>
-        <div className="max-w-4xl mx-auto flex justify-end mt-4">
-           <Button variant="tertiary" onClick={() => navigate('/gallery')}>Skip to Results (Dev)</Button>
         </div>
       </div>
     </div>
