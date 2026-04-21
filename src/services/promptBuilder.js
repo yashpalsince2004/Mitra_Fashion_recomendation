@@ -51,7 +51,9 @@ export function buildPersonalizedOutfitPrompt(occasion, conversationContext, ima
   const quizSection = quizProfile
     ? `
 STYLE QUIZ PROFILE:
+- Gender: ${quizProfile.gender || 'Not specified'}
 - Primary Occasion Focus: ${quizProfile.occasion}
+- Season: ${quizProfile.season || 'Not specified'}
 - Style Vibe: ${quizProfile.styleVibe}
 - Color Palette Preference: ${quizProfile.colorPalette}
 - Budget Tier: ${quizProfile.budget}
@@ -96,7 +98,9 @@ The client's image has been analysed and their profile is:
   const quizSection = quizProfile
     ? `
 The client completed a style quiz with these preferences:
+- Gender: ${quizProfile.gender || 'Not specified'}
 - Main Occasion: ${quizProfile.occasion}
+- Season: ${quizProfile.season || 'Not specified'}
 - Style Vibe: ${quizProfile.styleVibe}
 - Color Palette: ${quizProfile.colorPalette}
 - Budget: ${quizProfile.budget}
@@ -114,7 +118,7 @@ Begin by acknowledging any profile data you have, then ask about the occasion or
 export function buildRemixOutfitPrompt(originalOutfit, tweakInstruction, analysis = null, quizProfile = null) {
   let context = "";
   if (analysis) context += `- Body Type: ${analysis.bodyType}\n- Skin Tone: ${analysis.skinTone}\n`;
-  if (quizProfile) context += `- Style Preference: ${quizProfile.styleVibe}\n- Occasion: ${quizProfile.occasion}\n`;
+  if (quizProfile) context += `- Gender: ${quizProfile.gender || 'Not specified'}\n- Style Preference: ${quizProfile.styleVibe}\n- Occasion: ${quizProfile.occasion}\n- Season: ${quizProfile.season || 'Not specified'}\n`;
 
   return `You are an elite fashion stylist. Your client has requested a tweak to an outfit you recently recommended.
 

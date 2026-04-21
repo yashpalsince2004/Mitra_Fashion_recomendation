@@ -23,22 +23,22 @@ export function WishlistPage() {
       <div className="mb-10">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-white/40 hover:text-white/70 text-sm mb-6 transition-colors group"
+          className="flex items-center gap-2 text-muted hover:text-muted text-sm mb-6 transition-colors group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
           Back
         </button>
 
-        <div className="flex items-end justify-between border-b border-white/10 pb-8">
+        <div className="flex items-end justify-between border-b ghost-border pb-8">
           <div>
             <div className="flex items-center gap-3 mb-2">
               <Heart className="w-5 h-5 text-accent fill-accent" />
-              <span className="text-white/40 text-xs uppercase tracking-widest font-semibold">
+              <span className="text-muted text-xs uppercase tracking-widest font-semibold">
                 Saved Looks
               </span>
             </div>
-            <h2 className="font-display text-4xl md:text-5xl text-white">My Wishlist</h2>
-            <p className="font-body text-white/45 mt-2">
+            <h2 className="font-display text-4xl md:text-5xl text-main">My Wishlist</h2>
+            <p className="font-body text-muted mt-2">
               {wishlist.length > 0
                 ? `${wishlist.length} look${wishlist.length > 1 ? "s" : ""} curated and saved.`
                 : "Your wishlist is empty."}
@@ -48,7 +48,7 @@ export function WishlistPage() {
           {wishlist.length > 0 && (
             <button
               onClick={clearWishlist}
-              className="flex items-center gap-2 text-white/30 hover:text-red-400 text-sm border border-white/10 hover:border-red-400/30 px-4 py-2.5 rounded-xl transition-all"
+              className="flex items-center gap-2 text-muted hover:text-red-400 text-sm border ghost-border hover:border-red-400/30 px-4 py-2.5 rounded-xl transition-all"
             >
               <Trash2 className="w-3.5 h-3.5" />
               Clear all
@@ -62,17 +62,17 @@ export function WishlistPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col items-center justify-center py-28 text-center"
+          className="flex flex-col items-center justify-center py-24 px-8 text-center glass rounded-[2.5rem] border ghost-border shadow-2xl max-w-3xl mx-auto mt-10"
         >
-          <div className="w-20 h-20 rounded-full bg-white/4 border border-white/10 flex items-center justify-center mb-6">
-            <Heart className="w-8 h-8 text-white/20" />
+          <div className="w-24 h-24 rounded-full bg-surface-low border ghost-border flex items-center justify-center mb-6 shadow-inner">
+            <Heart className="w-10 h-10 text-muted" />
           </div>
-          <h3 className="font-display text-2xl text-white/50 mb-3">Nothing saved yet</h3>
-          <p className="font-body text-white/30 text-sm max-w-xs leading-relaxed mb-8">
+          <h3 className="font-display text-3xl font-bold text-main mb-3 drop-shadow-sm">Nothing saved yet</h3>
+          <p className="font-body text-main opacity-80 text-base max-w-sm leading-relaxed mb-10 font-medium">
             Generate outfit recommendations and tap the heart icon to save looks you love.
           </p>
-          <Button onClick={() => navigate("/quiz")} className="gap-2">
-            <Wand2 className="w-4 h-4" />
+          <Button onClick={() => navigate("/quiz")} className="gap-2 px-8 py-4 text-base rounded-2xl shadow-lg">
+            <Wand2 className="w-5 h-5" />
             Start Styling
           </Button>
         </motion.div>
@@ -94,7 +94,7 @@ export function WishlistPage() {
                 {/* Remove heart */}
                 <button
                   onClick={() => toggleWishlist(outfit)}
-                  className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full bg-black/40 backdrop-blur border border-white/10 flex items-center justify-center hover:bg-red-500/20 hover:border-red-400/40 transition-all"
+                  className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full bg-black/40 backdrop-blur border ghost-border flex items-center justify-center hover:bg-red-500/20 hover:border-red-400/40 transition-all"
                 >
                   <Heart className="w-4 h-4 text-accent fill-accent" />
                 </button>
@@ -111,7 +111,7 @@ export function WishlistPage() {
                     {outfit.tags?.map((t) => (
                       <span
                         key={t}
-                        className="text-[9px] uppercase font-bold tracking-widest text-white/80 bg-black/50 backdrop-blur-sm border border-white/10 px-2 py-0.5 rounded-full"
+                        className="text-[9px] uppercase font-bold tracking-widest text-muted bg-black/50 backdrop-blur-sm border ghost-border px-2 py-0.5 rounded-full"
                       >
                         {t}
                       </span>
@@ -121,15 +121,15 @@ export function WishlistPage() {
 
                 {/* Content */}
                 <div className="flex-1 flex flex-col">
-                  <h3 className="font-display text-lg text-white mb-1.5">{outfit.title}</h3>
-                  <p className="font-body text-white/50 text-sm leading-relaxed flex-1">
+                  <h3 className="font-display text-lg text-main mb-1.5">{outfit.title}</h3>
+                  <p className="font-body text-muted text-sm leading-relaxed flex-1">
                     {outfit.desc}
                   </p>
 
                   {outfit.why_it_works && (
-                    <div className="mt-3 pt-3 border-t border-white/8 flex items-start gap-2">
+                    <div className="mt-3 pt-3 border-t ghost-border flex items-start gap-2">
                       <Sparkles className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />
-                      <p className="text-white/35 text-xs leading-relaxed italic">
+                      <p className="text-muted text-xs leading-relaxed italic">
                         {outfit.why_it_works}
                       </p>
                     </div>

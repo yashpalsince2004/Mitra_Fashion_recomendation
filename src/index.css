@@ -7,9 +7,8 @@
   --color-surface: var(--surface);
   --color-surface-container-low: var(--surface-low);
   --color-surface-container-high: var(--surface-high);
-
-  --font-display: 'Manrope', 'Poppins', sans-serif;
-  --font-body: 'Inter', sans-serif;
+  --font-display: 'Times New Roman', Times, serif;
+  --font-body: 'Times New Roman', Times, serif;
 
   --radius-xl: 0.75rem;
 
@@ -17,43 +16,32 @@
 }
 
 :root {
-  /* Default Dark Mode (Noir) */
-  --primary: #0F172A;
-  --accent: #E11D48;
-  --neutral: #F8FAFC;
-  --surface: #0b1326;
-  --surface-low: #131b2e;
-  --surface-high: #2d3449;
-  --glass: rgba(255, 255, 255, 0.08);
-  --glass-drawer: rgba(255, 255, 255, 0.05);
-  --ghost-border: rgba(255, 255, 255, 0.15);
-  --text-muted: rgba(255, 255, 255, 0.4);
-  --text-main: rgba(255, 255, 255, 0.9);
-}
-
-:root.light {
-  /* Refined Champagne Theme */
-  --primary: #5c4b40;
-  --accent: #8b6e4e;
-  --neutral: #2c2420;
-  --surface: #fdfaf7;
-  --surface-low: #f5f1eb;
-  --surface-high: #ede7de;
-  --glass: rgba(139, 110, 78, 0.05);
-  --glass-drawer: rgba(139, 110, 78, 0.03);
-  --ghost-border: rgba(139, 110, 78, 0.15);
-  --text-muted: rgba(44, 36, 32, 0.5);
-  --text-main: rgba(44, 36, 32, 0.9);
+  /* Chocolate Truffle Theme */
+  --primary: #713600;      /* Medium Brown */
+  --accent: #C05800;       /* Orange/Caramel Brown */
+  --neutral: #38240D;      /* Dark Chocolate */
+  --surface: transparent;
+  --surface-bg: #FDFBD4;   /* Light Cream Background */
+  
+  --surface-low: rgba(253, 251, 212, 0.75); /* Liquid glass base (increased opacity) */
+  --surface-high: rgba(253, 251, 212, 0.90);
+  --glass: rgba(253, 251, 212, 0.75);
+  --glass-drawer: rgba(253, 251, 212, 0.85);
+  --ghost-border: rgba(113, 54, 0, 0.25); /* Bumped border contrast slightly */
+  
+  --text-muted: rgba(56, 36, 13, 0.80); /* #38240D muted */
+  --text-main: rgba(56, 36, 13, 1.0);  /* #38240D solid */
 }
 
 @layer base {
   body {
-    background-color: var(--surface);
+    background: var(--surface-bg, var(--surface));
+    background-attachment: fixed;
     color: var(--text-main);
     font-family: var(--font-body);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    transition: background-color 0.5s ease, color 0.5s ease;
+    transition: background 0.5s ease, background-color 0.5s ease, color 0.5s ease;
   }
 
   h1, h2, h3, h4, h5, h6 {

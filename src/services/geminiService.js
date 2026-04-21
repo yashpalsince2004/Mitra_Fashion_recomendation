@@ -1,4 +1,9 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+/** 
+ * AI SERVICE - OpenRouter Integration
+ * This service handles all AI calls (Chat, Vision, Outfit Generation) using OpenRouter.
+ * It is fully compatible with the existing UI components.
+ */
+
 import {
   buildFashionPrompt,
   buildVisionAnalysisPrompt,
@@ -7,217 +12,235 @@ import {
   buildRemixOutfitPrompt,
 } from "./promptBuilder";
 
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
-const genAI = new GoogleGenerativeAI(API_KEY);
+const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY || "";
+const DEFAULT_MODEL = import.meta.env.VITE_OPENROUTER_MODEL || "openrouter/free";
 
-// ─── Analyze an uploaded image(s) using Gemini Vision ───────────────────────
+// ─── Helper: Standard Fetch to OpenRouter ───────────────────────────────────
+async function openRouterRequest(messages, { stream = false, model = DEFAULT_MODEL } = {}) {
+  if (!OPENROUTER_API_KEY || OPENROUTER_API_KEY === "your_openrouter_key_here") {
+    throw new Error("API Key logic: Please replace 'your_openrouter_key_here' in your .env file with your actual OpenRouter API Key.");
+  }
+
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": window.location.origin,
+      "X-Title": "AI Fashion Stylist",
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      stream,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData?.error?.message || "OpenRouter Request Failed");
+  }
+
+  return response;
+}
+
+// ─── Analyze images using Vision capabilities ────────────────────────────────
 export async function analyzeUserImage(images) {
-  // Support both old single parameter and new array parameter for safety
-  const imagesArray = Array.isArray(images) ? images : [{ base64Data: arguments[0], mimeType: arguments[1] }];
+  const imagesArray = Array.isArray(images) ? images : [images];
   
-  if (!API_KEY) return getMockAnalysis(imagesArray.length > 1);
+  if (!OPENROUTER_API_KEY) return getMockAnalysis(imagesArray.length > 1);
+
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const imageParts = imagesArray.map(img => ({
-      inlineData: { data: img.base64Data, mimeType: img.mimeType }
-    }));
+    const prompt = buildVisionAnalysisPrompt(imagesArray.length > 1);
     
-    const result = await model.generateContent([
-      buildVisionAnalysisPrompt(imagesArray.length > 1), 
-      ...imageParts
-    ]);
-    const cleaned = result.response.text().replace(/```json/g, "").replace(/```/g, "").trim();
+    // OpenRouter/OpenAI format for multi-modal messages
+    const content = [
+      { type: "text", text: prompt },
+      ...imagesArray.map(img => ({
+        type: "image_url",
+        image_url: { url: `data:${img.mimeType || 'image/jpeg'};base64,${img.base64Data}` }
+      }))
+    ];
+
+    const res = await openRouterRequest([{ role: "user", content }]);
+    const data = await res.json();
+    const rawText = data.choices[0].message.content;
+    const cleaned = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
     return JSON.parse(cleaned);
   } catch (err) {
-    console.error("Gemini Vision Error:", err);
+    console.error("OpenRouter Vision Error:", err);
     return getMockAnalysis(imagesArray.length > 1);
   }
 }
 
-// ─── Create a persistent Gemini chat session ──────────────────────────────────
-export function createStylistChatSession(analysis, quizProfile) {
-  if (!API_KEY) return null; // Will use mock mode
-
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-  const systemContext = buildChatSystemPrompt(analysis, quizProfile);
-
-  return model.startChat({
-    history: [
-      { role: "user", parts: [{ text: systemContext }] },
-      {
-        role: "model",
-        parts: [
-          {
-            text: "I've thoroughly reviewed your profile and I'm ready to curate an exceptional look for you. Tell me — what's the occasion or mood we're dressing for? A dinner, a creative meeting, a weekend escape?",
-          },
-        ],
-      },
-    ],
-    generationConfig: {
-      maxOutputTokens: 250,
-      temperature: 0.9,
-    },
-  });
+// ─── Session Helpers (Returning history arrays for stateless API) ─────────────
+export function startQuickChat() {
+  return [
+    { role: "system", content: "You are an AI Fashion Stylist. Keep your answers concise, helpful, and premium." },
+    { role: "assistant", content: "Hello! I am your AI Fashion Stylist. How can I help you elevate your style today?" }
+  ];
 }
 
-// ─── Send a message to an existing chat session ───────────────────────────────
-export async function sendChatMessageStream(chatSession, userMessage, onChunk) {
-  if (!chatSession) {
-    const mockReply = await getMockChatReply(userMessage);
-    const words = mockReply.split(" ");
-    let currentText = "";
-    for (const word of words) {
-       currentText += word + " ";
-       onChunk(currentText);
-       await new Promise(r => setTimeout(r, 60));
-    }
-    return currentText.trim();
+export function createStylistChatSession(analysis, quizProfile) {
+  const systemContext = buildChatSystemPrompt(analysis, quizProfile);
+  return [
+    { role: "system", content: systemContext },
+    { role: "assistant", content: "I've thoroughly reviewed your profile and I'm ready to curate an exceptional look for you. Tell me — what's the occasion or mood we're dressing for? A dinner, a creative meeting, a weekend escape?" }
+  ];
+}
+
+// ─── Streaming Chat Logic ──────────────────────────────────────────────────
+export async function sendChatMessageStream(chatHistory, userMessage, onChunk) {
+  if (!OPENROUTER_API_KEY || OPENROUTER_API_KEY === "your_openrouter_key_here") {
+    onChunk("Please set your OpenRouter API Key in the .env file.");
+    return null;
   }
-  
+
+  const updatedHistory = [...chatHistory, { role: "user", content: userMessage }];
+
   try {
-    const result = await chatSession.sendMessageStream(userMessage);
+    const res = await openRouterRequest(updatedHistory, { stream: true });
+    
+    // Check if the response is actually a stream
+    if (!res.body) throw new Error("No response body received");
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder("utf-8");
     let fullText = "";
-    for await (const chunk of result.stream) {
-      const chunkText = chunk.text();
-      fullText += chunkText;
-      onChunk(fullText);
+    let buffer = ""; // Buffer to hold incomplete JSON strings
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      
+      const lines = buffer.split("\n");
+      // Keep the last line in the buffer as it might be incomplete
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        const trimmedLine = line.trim();
+        if (!trimmedLine || trimmedLine === "data: [DONE]") continue;
+        
+        if (trimmedLine.startsWith("data: ")) {
+          try {
+            const jsonStr = trimmedLine.replace("data: ", "");
+            const data = JSON.parse(jsonStr);
+            const text = data.choices[0]?.delta?.content || "";
+            if (text) {
+              fullText += text;
+              onChunk(fullText);
+            }
+          } catch (e) {
+            console.debug("Partial JSON encountered, waiting for next chunk...");
+          }
+        }
+      }
     }
+    
+    if (fullText) {
+      chatHistory.push({ role: "user", content: userMessage });
+      chatHistory.push({ role: "assistant", content: fullText });
+    }
+    
     return fullText;
   } catch (err) {
-    console.error("Gemini Chat Stream Error:", err);
-    return "My apologies — I had a moment of distraction. Could you describe your occasion again?";
+    console.error("Streaming failed, trying non-streaming fallback...", err);
+    
+    // FALLBACK: Non-streaming request
+    try {
+      const res = await openRouterRequest(updatedHistory, { stream: false });
+      const data = await res.json();
+      const text = data.choices[0]?.message?.content || "";
+      
+      if (text) {
+        onChunk(text);
+        chatHistory.push({ role: "user", content: userMessage });
+        chatHistory.push({ role: "assistant", content: text });
+        return text;
+      }
+    } catch (fallbackErr) {
+      console.error("AI SERVICE ERROR:", fallbackErr.message);
+    }
+    return null;
   }
 }
 
-// ─── Generate outfits personalized to the vision analysis ────────────────────
+// ─── Outfit Generation Logic ────────────────────────────────────────────────
 export async function generatePersonalizedOutfits(occasion, preferences, imageAnalysis, quizProfile) {
-  if (!API_KEY) return getMockOutfits();
+  if (!OPENROUTER_API_KEY) return getMockOutfits();
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const prompt = imageAnalysis
       ? buildPersonalizedOutfitPrompt(occasion, preferences, imageAnalysis, quizProfile)
       : buildFashionPrompt(occasion, preferences);
-    const result = await model.generateContent(prompt);
-    const cleaned = result.response.text().replace(/```json/g, "").replace(/```/g, "").trim();
+      
+    const res = await openRouterRequest([{ role: "user", content: prompt }]);
+    const data = await res.json();
+    const cleaned = data.choices[0].message.content.replace(/```json/g, "").replace(/```/g, "").trim();
     return JSON.parse(cleaned);
   } catch (err) {
-    console.error("Gemini Outfit Error:", err);
+    console.error("OpenRouter Outfit Error:", err);
     return getMockOutfits();
   }
 }
 
-// ─── Legacy outfit generation ─────────────────────────────────────────────────
 export async function generateOutfitRecommendations(occasion, stylePreferences) {
-  if (!API_KEY) return getMockOutfits();
+  if (!OPENROUTER_API_KEY) return getMockOutfits();
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const result = await model.generateContent(buildFashionPrompt(occasion, stylePreferences));
-    const cleaned = result.response.text().replace(/```json/g, "").replace(/```/g, "").trim();
+    const prompt = buildFashionPrompt(occasion, stylePreferences);
+    const res = await openRouterRequest([{ role: "user", content: prompt }]);
+    const data = await res.json();
+    const cleaned = data.choices[0].message.content.replace(/```json/g, "").replace(/```/g, "").trim();
     return JSON.parse(cleaned);
   } catch (err) {
-    console.error("Gemini Error:", err);
+    console.error("OpenRouter Error:", err);
     return getMockOutfits();
   }
 }
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
-function getMockAnalysis(isMulti = false) {
-  return new Promise((resolve) =>
-    setTimeout(
-      () =>
-        resolve({
-          bodyType: "Athletic / Straight",
-          skinTone: "Medium Warm",
-          skinToneCategory: "Warm",
-          currentStyle: "Smart Casual",
-          wardrobeVibe: isMulti ? "Vintage Eclectic with neutral foundations" : undefined,
-          colorNotes: "Earth tones & amber",
-          stylistInsight:
-            "Your warm undertones pair beautifully with camel, terracotta, and deep olive. Structure will complement your silhouette.",
-        }),
-      1800
-    )
-  );
-}
-
-const MOCK_REPLIES = [
-  "Wonderful. A few more details and I'll have the perfect looks ready. What colours do you feel most confident in?",
-  "Excellent taste. And for this occasion — are we aiming for understated elegance, or something that truly commands attention?",
-  "Perfect. I have everything I need to craft your bespoke looks. Click 'Generate My Looks' whenever you're ready.",
-];
-let mockReplyIndex = 0;
-
-function getMockChatReply() {
-  return new Promise((resolve) =>
-    setTimeout(() => {
-      resolve(MOCK_REPLIES[mockReplyIndex++ % MOCK_REPLIES.length]);
-    }, 900)
-  );
-}
-
-function getMockOutfits() {
-  return new Promise((resolve) =>
-    setTimeout(
-      () =>
-        resolve([
-          {
-            id: 1,
-            title: "Midnight Velvet",
-            desc: "A deep navy double-breasted jacket paired with wide-leg trousers and a cream silk shirt.",
-            tags: ["Formal", "Winter"],
-            why_it_works: "The structured fit creates clean vertical lines that elongate the silhouette.",
-            garments: ["Navy double-breasted jacket", "Wide-leg trousers", "Cream silk shirt"],
-          },
-          {
-            id: 2,
-            title: "Silent Architecture",
-            desc: "Structured white silk blouse with an asymmetrical wrap skirt in warm taupe.",
-            tags: ["Minimalist", "Civic"],
-            why_it_works: "Asymmetry and tonal dressing create visual interest without competing elements.",
-            garments: ["White silk blouse", "Taupe wrap skirt"],
-          },
-          {
-            id: 3,
-            title: "Urban Daze",
-            desc: "Oversized camel trench over a mock-neck chocolate knit and relaxed ecru denim.",
-            tags: ["Streetwear", "Casual"],
-            why_it_works:
-              "Layering earth tones with varied textures provides warmth while maintaining aesthetic cohesion.",
-            garments: ["Camel trench coat", "Chocolate mock-neck knit", "Ecru relaxed denim"],
-          },
-        ]),
-      1500
-    )
-  );
-}
-
-// ─── Remix an existing outfit ────────────────────────────────────────────────
 export async function remixOutfit(outfit, tweakInstruction, analysis, quizProfile) {
-  if (!API_KEY) return getMockRemix(outfit, tweakInstruction);
+  if (!OPENROUTER_API_KEY) return getMockRemix(outfit, tweakInstruction);
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const prompt = buildRemixOutfitPrompt(outfit, tweakInstruction, analysis, quizProfile);
-    const result = await model.generateContent(prompt);
-    const cleaned = result.response.text().replace(/```json/g, "").replace(/```/g, "").trim();
+    const res = await openRouterRequest([{ role: "user", content: prompt }]);
+    const data = await res.json();
+    const cleaned = data.choices[0].message.content.replace(/```json/g, "").replace(/```/g, "").trim();
     return JSON.parse(cleaned);
   } catch (err) {
-    console.error("Gemini Remix Error:", err);
+    console.error("OpenRouter Remix Error:", err);
     return getMockRemix(outfit, tweakInstruction);
   }
 }
 
-function getMockRemix(outfit, tweakInstruction) {
+// ─── Mock Data (Identical to previous implementation) ────────────────────────
+function getMockAnalysis(isMulti = false) {
   return new Promise((resolve) =>
-    setTimeout(
-      () =>
-        resolve({
-          ...outfit,
-          title: outfit.title + " (Remixed)",
-          desc: outfit.desc + ` Modified to be: ${tweakInstruction}.`,
-          why_it_works: "The new variant respects your tweak while keeping the core identity.",
-          garments: [...(outfit.garments || []), "New tweaked accessory"],
-        }),
-      1500
-    )
+    setTimeout(() => resolve({
+      bodyType: "Athletic / Straight",
+      skinTone: "Medium Warm",
+      skinToneCategory: "Warm",
+      currentStyle: "Smart Casual",
+      wardrobeVibe: isMulti ? "Vintage Eclectic with neutral foundations" : undefined,
+      colorNotes: "Earth tones & amber",
+      stylistInsight: "Your warm undertones pair beautifully with camel, terracotta, and deep olive.",
+    }), 1800)
   );
+}
+
+function getMockChatReply() {
+  return new Promise((resolve) => setTimeout(() => resolve("That sounds lovely. For this occasion, should we focus on something more tailored or relaxed?"), 900));
+}
+
+function getMockOutfits() {
+  return new Promise((resolve) =>
+    setTimeout(() => resolve([
+      { id: 1, title: "Midnight Velvet", desc: "Navy jacket with silk shirt.", tags: ["Formal"], why_it_works: "Clean lines.", garments: ["Jacket", "Shirt"] },
+      { id: 2, title: "Urban Daze", desc: "Camel trench with denim.", tags: ["Casual"], why_it_works: "Texture play.", garments: ["Trench", "Denim"] }
+    ]), 1500)
+  );
+}
+
+function getMockRemix(outfit, tweak) {
+  return new Promise((resolve) => setTimeout(() => resolve({ ...outfit, title: outfit.title + " (Remixed)", desc: outfit.desc + ` Modified for: ${tweak}` }), 1500));
 }

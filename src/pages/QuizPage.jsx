@@ -2,8 +2,18 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, ArrowLeft, Check } from "lucide-react";
+import { buildSearchQueryFromProfile } from "../utils/searchQueryBuilder";
 
 const STEPS = [
+  {
+    id: "gender",
+    question: "How do you identify?",
+    subtitle: "This helps us tailor silhouettes and fits to you.",
+    options: [
+      { value: "Male", emoji: "👔", desc: "Masculine styles & fits" },
+      { value: "Female", emoji: "👗", desc: "Feminine styles & fits" },
+    ],
+  },
   {
     id: "occasion",
     question: "What's your primary occasion?",
@@ -15,6 +25,18 @@ const STEPS = [
       { value: "Special Event", emoji: "✨", desc: "Weddings, galas & beyond" },
       { value: "Street / Social", emoji: "🏙️", desc: "Culture & nightlife" },
       { value: "Travel", emoji: "✈️", desc: "Chic on the move" },
+    ],
+  },
+  {
+    id: "season",
+    question: "What season are we dressing for?",
+    subtitle: "We'll pick fabrics and layers that make sense.",
+    options: [
+      { value: "Summer", emoji: "☀️", desc: "Light, breathable & airy" },
+      { value: "Winter", emoji: "❄️", desc: "Warm, layered & cozy" },
+      { value: "Rainy", emoji: "🌧️", desc: "Waterproof & practical" },
+      { value: "Spring", emoji: "🌸", desc: "Fresh, transitional layers" },
+      { value: "Autumn", emoji: "🍂", desc: "Rich textures & warm hues" },
     ],
   },
   {
@@ -72,9 +94,18 @@ export function QuizPage() {
     setAnswers(newAnswers);
 
     if (isLast) {
-      // Navigate to chat with quiz profile
+      // Build search query from the completed quiz profile
+      const searchQuery = buildSearchQueryFromProfile(newAnswers);
+      console.log("🔍 Generated Search Query:", searchQuery);
+
+      // Navigate to gallery with quiz profile + search query
       setTimeout(() => {
-        navigate("/chat", { state: { quizProfile: newAnswers } });
+        navigate("/gallery", {
+          state: {
+            quizProfile: newAnswers,
+            searchQuery,
+          },
+        });
       }, 350);
     } else {
       setDirection(1);
@@ -97,7 +128,7 @@ export function QuizPage() {
       <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-accent/5 rounded-full blur-[140px] pointer-events-none opacity-60" />
       <div className="fixed -top-40 -right-40 w-[500px] h-[500px] bg-accent/8 rounded-full blur-[120px] pointer-events-none" />
 
-      <div className="w-full max-w-2xl z-10">
+      <div className="w-full max-w-4xl z-10">
         {/* Progress bar */}
         <div className="mb-10">
           <div className="flex items-center justify-between mb-3">
@@ -112,11 +143,11 @@ export function QuizPage() {
               {currentStep + 1} / {totalSteps}
             </span>
           </div>
-          <div className="h-0.5 bg-black/5 dark:bg-white/8 rounded-full overflow-hidden">
+          <div className="h-0.5 bg-black/5 dark:bg-surface-low border ghost-border rounded-full overflow-hidden">
             <motion.div
               className="h-full bg-silk-gradient rounded-full"
               initial={{ width: 0 }}
-              animate={{ width: `${progress + 25}%` }}
+              animate={{ width: `${progress + (100 / totalSteps)}%` }}
               transition={{ duration: 0.5, ease: "easeOut" }}
             />
           </div>
@@ -136,27 +167,27 @@ export function QuizPage() {
               <p className="text-muted text-xs uppercase tracking-widest font-semibold mb-3">
                 Style Profile · Step {currentStep + 1}
               </p>
-              <h2 className="font-display text-3xl md:text-4xl text-main mb-2">
+              <h2 className="font-display text-4xl md:text-5xl font-bold text-main mb-4 tracking-tight drop-shadow-sm">
                 {step.question}
               </h2>
-              <p className="font-body text-muted text-base">{step.subtitle}</p>
+              <p className="font-body text-main text-lg md:text-xl font-medium opacity-90">{step.subtitle}</p>
             </div>
 
             {/* Options grid */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div className={`grid gap-5 ${step.options.length <= 2 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1 md:grid-cols-3"}`}>
               {step.options.map((opt) => {
                 const isSelected = answers[step.id] === opt.value;
                 return (
                   <motion.button
                     key={opt.value}
                     onClick={() => handleSelect(opt.value)}
-                    whileHover={{ scale: 1.02 }}
+                    whileHover={{ scale: 1.03, y: -4 }}
                     whileTap={{ scale: 0.98 }}
                     className={`
-                      relative text-left p-5 rounded-2xl border transition-all duration-200 group
+                      relative text-left p-6 md:p-8 rounded-[2rem] border transition-all duration-300 group glass shadow-[0_8px_30px_rgb(0,0,0,0.12)]
                       ${isSelected
-                        ? "bg-accent/15 border-accent/50 shadow-lg shadow-accent/10"
-                        : "bg-surface-container-low border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-surface-container-high hover:border-accent/40"
+                        ? "bg-accent/25 border-accent/50 shadow-[0_12px_40px_rgba(var(--accent-rgb),0.3)]"
+                        : "border-black/5 dark:ghost-border hover:bg-surface-high hover:border-accent/40 hover:shadow-[0_15px_40px_rgb(0,0,0,0.16)]"
                       }
                     `}
                   >
@@ -164,16 +195,16 @@ export function QuizPage() {
                       <motion.div
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
-                        className="absolute top-3 right-3 w-5 h-5 rounded-full bg-accent flex items-center justify-center"
+                        className="absolute top-4 right-4 w-7 h-7 rounded-full bg-accent flex items-center justify-center shadow-lg"
                       >
-                        <Check className="w-3 h-3 text-white" />
+                        <Check className="w-4 h-4 text-main" />
                       </motion.div>
                     )}
-                    <span className="text-2xl mb-3 block">{opt.emoji}</span>
-                    <p className={`font-semibold text-sm mb-1 ${isSelected ? "text-accent" : "text-main"}`}>
+                    <span className="text-4xl md:text-5xl mb-5 block drop-shadow-md">{opt.emoji}</span>
+                    <p className={`font-bold text-lg md:text-xl mb-2 tracking-tight ${isSelected ? "text-accent" : "text-main"}`}>
                       {opt.value}
                     </p>
-                    <p className="text-muted text-xs leading-snug">{opt.desc}</p>
+                    <p className="text-main font-medium opacity-80 text-sm md:text-base leading-relaxed">{opt.desc}</p>
                   </motion.button>
                 );
               })}
@@ -182,7 +213,7 @@ export function QuizPage() {
             {/* Skip option */}
             <div className="flex justify-center mt-8">
               <button
-                onClick={() => navigate("/chat")}
+                onClick={() => navigate("/gallery")}
                 className="text-muted hover:text-main text-[10px] tracking-widest uppercase transition-colors flex items-center gap-1.5 font-bold"
               >
                 Skip quiz <ArrowRight className="w-3 h-3" />

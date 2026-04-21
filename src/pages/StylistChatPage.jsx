@@ -6,12 +6,14 @@ import { Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
 import { ImageUploader } from "../components/ui/ImageUploader";
 import { AnalysisPanel } from "../components/ui/AnalysisPanel";
+import { InspirationGrid } from "../components/ui/InspirationGrid";
 import {
   analyzeUserImage,
   generatePersonalizedOutfits,
   createStylistChatSession,
   sendChatMessageStream,
 } from "../services/geminiService";
+import { fetchOutfitImages } from "../services/unsplashService";
 
 const PHASE = {
   GREETING: "greeting",
@@ -25,6 +27,7 @@ export function StylistChatPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const quizProfile = location.state?.quizProfile || null;
+  const searchQuery = location.state?.searchQuery || null;
 
   const bottomRef = useRef(null);
   const chatSessionRef = useRef(null);
@@ -35,7 +38,7 @@ export function StylistChatPage() {
     {
       role: "ai",
       text: quizProfile
-        ? `Welcome back. I've reviewed your style profile — ${quizProfile.styleVibe} with a focus on ${quizProfile.occasion}. Upload a photo and we'll take this to the next level.`
+        ? `Welcome back. I've reviewed your style profile — ${quizProfile.styleVibe} with a focus on ${quizProfile.occasion} for ${quizProfile.season || "all seasons"}.${searchQuery ? `\n\n🔍 Search Query: "${searchQuery}"` : ""} Upload a photo and we'll take this to the next level.`
         : "Welcome to your private atelier. I'm your personal AI stylist. Upload a photo of yourself — I'll analyse your features and craft bespoke looks around you.",
       showUploader: true,
     },
@@ -45,6 +48,27 @@ export function StylistChatPage() {
   const [analysis, setAnalysis] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [chatTurns, setChatTurns] = useState(0);
+
+  // ── Unsplash Image State ───────────────────────────────────────────────────
+  const [inspirationImages, setInspirationImages] = useState([]);
+  const [imagesLoading, setImagesLoading] = useState(false);
+
+  // ── Fetch Unsplash images when searchQuery is available ─────────────────────
+  useEffect(() => {
+    if (searchQuery) {
+      setImagesLoading(true);
+      fetchOutfitImages(searchQuery, 8)
+        .then((images) => {
+          setInspirationImages(images);
+          console.log(`✅ Loaded ${images.length} inspiration images`);
+        })
+        .catch((err) => {
+          console.error("Image fetch error:", err);
+          setInspirationImages([]);
+        })
+        .finally(() => setImagesLoading(false));
+    }
+  }, [searchQuery]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -109,7 +133,7 @@ export function StylistChatPage() {
   };
 
   const handleImageClear = () => {
-    setUploadedImage(null);
+    setUploadedImages([]);
     setAnalysis(null);
     chatSessionRef.current = null;
     conversationLogRef.current = "";
@@ -177,6 +201,8 @@ export function StylistChatPage() {
         userImages: uploadedImages.map(img => img.previewUrl),
         analysis,
         quizProfile,
+        searchQuery,
+        inspirationImages,
         occasion: conversationLogRef.current.slice(0, 80),
       },
     });
@@ -184,96 +210,135 @@ export function StylistChatPage() {
 
   const showInput = phase === PHASE.CHATTING || phase === PHASE.GENERATING;
   const showGenerateBtn = chatTurns >= 1 && phase === PHASE.CHATTING && !isLoading;
+  const showInspirationGrid = (inspirationImages.length > 0 || imagesLoading) && searchQuery;
 
   return (
-    <div className="flex-1 flex flex-col max-w-3xl mx-auto w-full px-4 py-6">
-      {/* Message thread */}
-      <div className="flex-1 overflow-y-auto flex flex-col gap-5 pb-52">
-        <AnimatePresence initial={false}>
-          {messages.map((msg, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.38, ease: "easeOut" }}
-              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-            >
-              {msg.role === "ai" ? (
-                <div className="max-w-[88%] flex flex-col gap-3">
-                  <div className="flex items-start gap-3">
-                    {/* AI avatar */}
-                    <div className="w-8 h-8 shrink-0 rounded-full bg-gradient-to-br from-accent/70 to-accent/20 border border-accent/20 flex items-center justify-center">
-                      <Wand2 className="w-3.5 h-3.5 text-white" />
-                    </div>
-                    <div className="glass rounded-2xl rounded-tl-sm border border-black/5 dark:border-white/5 px-5 py-4">
-                      {msg.loading ? (
-                        <div className="flex items-center gap-2.5">
-                          <Loader2 className="w-4 h-4 text-accent animate-spin" />
-                          <p className="text-muted text-sm font-body">{msg.text}</p>
+    <div className="flex-1 flex flex-col max-w-5xl mx-auto w-full px-4 py-6">
+      <div className="flex-1 flex flex-col lg:flex-row gap-8">
+
+        {/* ── Left: Chat thread ──────────────────────────────────────────── */}
+        <div className="flex-1 flex flex-col min-w-0">
+          <div className="flex-1 overflow-y-auto flex flex-col gap-5 pb-52">
+            <AnimatePresence initial={false}>
+              {messages.map((msg, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.38, ease: "easeOut" }}
+                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  {msg.role === "ai" ? (
+                    <div className="max-w-[88%] flex flex-col gap-3">
+                      <div className="flex items-start gap-3">
+                        {/* AI avatar */}
+                        <div className="w-8 h-8 shrink-0 rounded-full bg-gradient-to-br from-accent/70 to-accent/20 border border-accent/20 flex items-center justify-center">
+                          <Wand2 className="w-3.5 h-3.5 text-main" />
                         </div>
-                      ) : (
-                        <p className="text-main font-body text-sm leading-relaxed">{msg.text}</p>
+                        <div className="glass rounded-2xl rounded-tl-sm border border-black/5 dark:ghost-border px-5 py-4">
+                          {msg.loading ? (
+                            <div className="flex items-center gap-2.5">
+                              <Loader2 className="w-4 h-4 text-accent animate-spin" />
+                              <p className="text-muted text-sm font-body">{msg.text}</p>
+                            </div>
+                          ) : (
+                            <p className="text-main font-body text-sm leading-relaxed whitespace-pre-line">{msg.text}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Upload zone */}
+                      {msg.showUploader && phase === PHASE.GREETING && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.25 }}
+                          className="ml-11"
+                        >
+                          <ImageUploader onImageSelect={handleImageSelect} onClear={handleImageClear} />
+                        </motion.div>
+                      )}
+
+                      {/* Analysis panel */}
+                      {msg.analysis && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.3 }}
+                          className="ml-11"
+                        >
+                          <AnalysisPanel analysis={msg.analysis} />
+                        </motion.div>
                       )}
                     </div>
-                  </div>
-
-                  {/* Upload zone */}
-                  {msg.showUploader && phase === PHASE.GREETING && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.25 }}
-                      className="ml-11"
-                    >
-                      <ImageUploader onImageSelect={handleImageSelect} onClear={handleImageClear} />
-                    </motion.div>
-                  )}
-
-                  {/* Analysis panel */}
-                  {msg.analysis && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3 }}
-                      className="ml-11"
-                    >
-                      <AnalysisPanel analysis={msg.analysis} />
-                    </motion.div>
-                  )}
-                </div>
-              ) : (
-                <div className="max-w-[80%] flex flex-col items-end gap-2">
-                  {msg.imagePreviews ? (
-                    <div className="flex flex-wrap justify-end gap-2 max-w-[300px]">
-                      {msg.imagePreviews.map((src, idx) => (
-                        <div key={idx} className="rounded-xl overflow-hidden border border-white/10 w-20 h-20 sm:w-24 sm:h-24">
-                           <img src={src} alt="Uploaded" className="w-full h-full object-cover" />
-                        </div>
-                      ))}
-                    </div>
-                  ) : msg.imagePreview ? (
-                    <div className="rounded-2xl overflow-hidden border border-black/10 dark:border-white/10 max-w-[180px]">
-                      <img
-                        src={msg.imagePreview}
-                        alt="Uploaded"
-                        className="w-full h-40 object-cover object-top"
-                      />
-                    </div>
                   ) : (
-                    <div className="bg-surface-container-high rounded-2xl rounded-br-sm px-5 py-4 border border-black/5 dark:border-white/5 shadow-sm">
-                      <p className="text-main font-body text-sm leading-relaxed">{msg.text}</p>
+                    <div className="max-w-[80%] flex flex-col items-end gap-2">
+                      {msg.imagePreviews ? (
+                        <div className="flex flex-wrap justify-end gap-2 max-w-[300px]">
+                          {msg.imagePreviews.map((src, idx) => (
+                            <div key={idx} className="rounded-xl overflow-hidden border ghost-border w-20 h-20 sm:w-24 sm:h-24">
+                               <img src={src} alt="Uploaded" className="w-full h-full object-cover" />
+                            </div>
+                          ))}
+                        </div>
+                      ) : msg.imagePreview ? (
+                        <div className="rounded-2xl overflow-hidden border border-black/10 dark:ghost-border max-w-[180px]">
+                          <img
+                            src={msg.imagePreview}
+                            alt="Uploaded"
+                            className="w-full h-40 object-cover object-top"
+                          />
+                        </div>
+                      ) : (
+                        <div className="bg-surface-container-high rounded-2xl rounded-br-sm px-5 py-4 border border-black/5 dark:ghost-border shadow-sm">
+                          <p className="text-main font-body text-sm leading-relaxed">{msg.text}</p>
+                        </div>
+                      )}
                     </div>
                   )}
-                </div>
-              )}
-            </motion.div>
-          ))}
-        </AnimatePresence>
-        <div ref={bottomRef} />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+
+            {/* Inline inspiration grid (mobile — show below chat) */}
+            {showInspirationGrid && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4, duration: 0.5 }}
+                className="lg:hidden mt-4"
+              >
+                <InspirationGrid
+                  images={inspirationImages}
+                  isLoading={imagesLoading}
+                  query={searchQuery}
+                />
+              </motion.div>
+            )}
+
+            <div ref={bottomRef} />
+          </div>
+        </div>
+
+        {/* ── Right sidebar: Inspiration Grid (desktop) ───────────────────── */}
+        {showInspirationGrid && (
+          <motion.div
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3, duration: 0.5 }}
+            className="hidden lg:block w-[340px] xl:w-[400px] shrink-0 overflow-y-auto max-h-[calc(100vh-160px)] pb-48 scrollbar-hide"
+          >
+            <InspirationGrid
+              images={inspirationImages}
+              isLoading={imagesLoading}
+              query={searchQuery}
+            />
+          </motion.div>
+        )}
       </div>
 
       {/* Input bar */}
-      <div className="fixed bottom-0 left-0 right-0 p-5 glass-drawer border-t border-white/8 z-20">
+      <div className="fixed bottom-0 left-0 right-0 p-5 glass-drawer border-t ghost-border z-20">
         <div className="max-w-3xl mx-auto flex flex-col gap-3">
 
           {/* Generate CTA */}
@@ -317,7 +382,7 @@ export function StylistChatPage() {
                 <button
                   onClick={handleSend}
                   disabled={!input.trim() || isLoading || phase === PHASE.GENERATING}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full text-accent hover:text-white hover:bg-accent/20 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full text-accent hover:text-main hover:bg-accent/20 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   {isLoading ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -328,7 +393,7 @@ export function StylistChatPage() {
               </div>
             </div>
           ) : (
-            <p className="text-center text-white/20 text-xs tracking-widest uppercase">
+            <p className="text-center text-muted text-xs tracking-widest uppercase">
               {phase === PHASE.ANALYZING ? "Analysing your photo…" : "Upload a photo to begin"}
             </p>
           )}
@@ -337,7 +402,7 @@ export function StylistChatPage() {
           <div className="flex justify-end">
             <button
               onClick={() => navigate("/gallery")}
-              className="text-white/15 hover:text-white/35 text-[10px] tracking-wider transition-colors"
+              className="text-muted hover:text-muted text-[10px] tracking-wider transition-colors"
             >
               Skip → Dev
             </button>
